@@ -1,11 +1,11 @@
-/*
-Copyright © 2024 NAME HERE <EMAIL ADDRESS>
-
-*/
 package main
 
-import "github.com/tdevsin/keyforge/cmd"
+import (
+	"github.com/tdevsin/keyforge/cmd"
+	"github.com/tdevsin/keyforge/internal/logger"
+)
 
 func main() {
+	logger.Info("Starting KeyForge")
 	cmd.Execute()
 }
