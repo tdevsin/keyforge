@@ -6,6 +6,7 @@ import (
 )
 
 func main() {
+	defer logger.Sync()
 	logger.Info("Starting KeyForge")
 	cmd.Execute()
 }
