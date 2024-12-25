@@ -3,13 +3,16 @@ package test
 // This file contains helper functions that help in running integration tests.
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"testing"
 	"time"
 
+	"github.com/tdevsin/keyforge/internal/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 var appBinary = "./keyforge"
@@ -43,8 +46,21 @@ func runApp(t *testing.T) (*exec.Cmd, func()) {
 		t.Fatalf("Failed to start the application: %v", err)
 	}
 
-	// Wait for the server to start
-	time.Sleep(2 * time.Second)
+	// Wait for the server to start with 10 retries by using health endpoint
+	for i := 0; i < 10; i++ {
+		t.Log("Trying to connect to the server")
+		conn, _ := grpc.NewClient("localhost:8080", grpc.WithTransportCredentials(insecure.NewCredentials()))
+		client := proto.NewHealthServiceClient(conn)
+		_, e := client.CheckHealth(context.Background(), &emptypb.Empty{})
+		if e != nil {
+			t.Log("Waiting for the application to start")
+			time.Sleep(2 * time.Second)
+			continue
+		} else {
+			conn.Close()
+			break
+		}
+	}
 
 	// Cleanup function to stop the server
 	cleanup := func() {
