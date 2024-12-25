@@ -46,6 +46,11 @@ gen-cmd:
 test:
 	go test ./... -v
 
+# Test integration
+.PHONY: itest
+itest:
+	go test ./test -v
+
 # Clean the existing binaries
 .PHONY: clean
 clean:
