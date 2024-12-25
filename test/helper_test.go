@@ -48,11 +48,12 @@ func runApp(t *testing.T) (*exec.Cmd, func()) {
 
 	// Wait for the server to start with 10 retries by using health endpoint
 	for i := 0; i < 10; i++ {
-		t.Log("Trying to connect to the server")
+		// We call the health endpoint to check if the server is running
 		conn, _ := grpc.NewClient("localhost:8080", grpc.WithTransportCredentials(insecure.NewCredentials()))
 		client := proto.NewHealthServiceClient(conn)
 		_, e := client.CheckHealth(context.Background(), &emptypb.Empty{})
 		if e != nil {
+			// If the server is not running, wait for 2 seconds and try again
 			t.Log("Waiting for the application to start")
 			time.Sleep(2 * time.Second)
 			continue
