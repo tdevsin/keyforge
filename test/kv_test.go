@@ -126,5 +126,13 @@ func TestDeleteKey(t *testing.T) {
 
 		assert.Nil(t, err)
 		assert.Equal(t, "k1", response.Key)
+
+		r := &proto.GetKeyRequest{
+			Key: "k1",
+		}
+		res, err := client.GetKey(context.Background(), r)
+
+		assert.NotNil(t, err)
+		assert.Nil(t, res)
 	})
 }
