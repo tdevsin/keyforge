@@ -11,19 +11,19 @@ message GetKeyRequest {
 // Response format for getting a key
 message GetKeyResponse {
   string key = 1; // The key for the operation
-  bytes value = 2;
+  bytes value = 2; // The value for the operation
 }
 
 // Request format for setting a key
 message SetKeyRequest {
   string key = 1; // The key for the operation
-  bytes value = 2;
+  bytes value = 2; // The value for the operation
 }
 
 // Response format for setting a key
 message SetKeyResponse {
   string key = 1; // The key for the operation
-  bytes value = 2;
+  bytes value = 2; // The value for the operation
 }
 
 // Request format for deleting a key
