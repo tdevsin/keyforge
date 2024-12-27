@@ -1,11 +1,13 @@
 package constants
 
-import "errors"
+import (
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
 
 var (
-	ErrInvalidKey   = errors.New("Key is not valid")
-	ErrInvalidValue = errors.New("Value is invalid")
-	ErrKeyNotFound  = errors.New("Key not found")
-	ErrDuplicateKey = errors.New("Key with same name is already present")
-	ErrInternal     = errors.New("Some internal error occurred")
+	StatusErrInvalidKey   = status.Errorf(codes.InvalidArgument, "Key is invalid")
+	StatusErrInvalidValue = status.Errorf(codes.InvalidArgument, "Value is invalid")
+	StatusErrKeyNotFound  = status.Errorf(codes.NotFound, "Key not found")
+	StatusErrInternal     = status.Errorf(codes.Internal, "Some internal error occurred while processing your request")
 )

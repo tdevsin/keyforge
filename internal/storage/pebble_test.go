@@ -3,17 +3,19 @@ package storage
 import (
 	"log"
 	"os"
+	"path"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/tdevsin/keyforge/internal/logger"
 )
 
 // Setup function for tests
-func setupTestDB(tb testing.TB, dbPath string) *PebbleDB {
+func setupTestDB(tb testing.TB) *PebbleDB {
 	if tb != nil {
 		tb.Helper()
 	}
-
+	dbPath := path.Join(".", "testDb")
 	err := os.RemoveAll(dbPath) // Ensure the database directory is clean
 	if tb != nil {
 		assert.NoError(tb, err, "Failed to clean up database directory")
@@ -21,8 +23,7 @@ func setupTestDB(tb testing.TB, dbPath string) *PebbleDB {
 		log.Fatalf("Failed to clean up database directory: %v", err)
 	}
 
-	err = InitializeDatabase(dbPath)
-	db := GetDatabaseInstance()
+	db := GetDatabaseInstance(logger.GetLogger(), dbPath)
 	if tb != nil {
 		assert.NoError(tb, err, "Failed to open database")
 	} else if err != nil {
@@ -32,7 +33,7 @@ func setupTestDB(tb testing.TB, dbPath string) *PebbleDB {
 }
 
 // Teardown function for tests and benchmarks
-func teardownTestDB(tb testing.TB, db *PebbleDB, dbPath string) {
+func teardownTestDB(tb testing.TB, db *PebbleDB) {
 	if tb != nil {
 		tb.Helper()
 	}
@@ -44,7 +45,7 @@ func teardownTestDB(tb testing.TB, db *PebbleDB, dbPath string) {
 		log.Printf("Failed to close database: %v", err)
 	}
 
-	err = os.RemoveAll(dbPath) // Cleanup database directory
+	err = os.RemoveAll(path.Join(".", "testDb")) // Cleanup database directory
 	if tb != nil {
 		assert.NoError(tb, err, "Failed to remove database directory")
 	} else if err != nil {
@@ -53,12 +54,11 @@ func teardownTestDB(tb testing.TB, db *PebbleDB, dbPath string) {
 }
 
 func TestPebbleDB(t *testing.T) {
-	const dbPath = "testdb"
 
 	// Test WriteKey
 	t.Run("WriteKey", func(t *testing.T) {
-		pebbleDB := setupTestDB(t, dbPath)
-		defer teardownTestDB(t, pebbleDB, dbPath)
+		pebbleDB := setupTestDB(t)
+		defer teardownTestDB(t, pebbleDB)
 
 		key := []byte("test-key")
 		value := []byte("test-value")
@@ -68,8 +68,8 @@ func TestPebbleDB(t *testing.T) {
 
 	// Test ReadKey
 	t.Run("ReadKey", func(t *testing.T) {
-		pebbleDB := setupTestDB(t, dbPath)
-		defer teardownTestDB(t, pebbleDB, dbPath)
+		pebbleDB := setupTestDB(t)
+		defer teardownTestDB(t, pebbleDB)
 
 		// Setup: Write a key
 		key := []byte("test-key")
@@ -85,8 +85,8 @@ func TestPebbleDB(t *testing.T) {
 
 	// Test DeleteKey
 	t.Run("DeleteKey", func(t *testing.T) {
-		pebbleDB := setupTestDB(t, dbPath)
-		defer teardownTestDB(t, pebbleDB, dbPath)
+		pebbleDB := setupTestDB(t)
+		defer teardownTestDB(t, pebbleDB)
 
 		// Setup: Write a key
 		key := []byte("test-key")

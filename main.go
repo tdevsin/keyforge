@@ -1,15 +1,15 @@
 package main
 
 import (
+	"context"
+
 	"github.com/tdevsin/keyforge/cmd"
-	"github.com/tdevsin/keyforge/internal/logger"
-	"github.com/tdevsin/keyforge/internal/storage"
+	"github.com/tdevsin/keyforge/internal/config"
 )
 
 func main() {
-	storage.InitializeDatabase(".")
-	db := storage.GetDatabaseInstance()
-	defer db.Close()
-	defer logger.Sync()
-	cmd.Execute()
+	conf := config.ReadConfig()
+	defer conf.Cleanup()
+	ctx := context.WithValue(context.Background(), "config", conf)
+	cmd.Execute(ctx)
 }

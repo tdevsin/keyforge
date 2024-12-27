@@ -1,41 +1,22 @@
 package storage
 
 import (
-	"log"
-	"sync"
-
 	"github.com/cockroachdb/pebble"
+	"github.com/tdevsin/keyforge/internal/logger"
 )
 
 type PebbleDB struct {
 	db *pebble.DB
 }
 
-var (
-	once     sync.Once
-	instance *PebbleDB
-	initErr  error
-)
-
-// InitializeDatabase initializes and opens the Pebble database only once.
-func InitializeDatabase(path string) error {
-	once.Do(func() {
-		db, err := pebble.Open(path, &pebble.Options{})
-		if err != nil {
-			initErr = err
-			return
-		}
-		instance = &PebbleDB{db: db}
+func GetDatabaseInstance(logger *logger.Logger, path string) *PebbleDB {
+	db, err := pebble.Open(path, &pebble.Options{
+		Logger: logger,
 	})
-	return initErr
-}
-
-// GetDatabaseInstance provides the initialized PebbleDB instance.
-// Ensure `InitializeDatabase` is called before using this function.
-func GetDatabaseInstance() *PebbleDB {
-	if instance == nil {
-		log.Fatal("Database has not been initialized. Call InitializeDatabase first.")
+	if err != nil {
+		panic(err)
 	}
+	instance := &PebbleDB{db: db}
 	return instance
 }
 
@@ -47,7 +28,6 @@ func (p *PebbleDB) Close() error {
 // WriteKey writes a key-value pair to the Pebble database.
 func (p *PebbleDB) WriteKey(key, value []byte) error {
 	if err := p.db.Set(key, value, pebble.Sync); err != nil {
-		log.Printf("Failed to write key %s: %v", key, err)
 		return err
 	}
 	return nil
@@ -57,7 +37,6 @@ func (p *PebbleDB) WriteKey(key, value []byte) error {
 func (p *PebbleDB) ReadKey(key []byte) ([]byte, error) {
 	value, closer, err := p.db.Get(key)
 	if err != nil {
-		log.Printf("Failed to read key %s: %v", key, err)
 		return nil, err
 	}
 	defer closer.Close()
@@ -67,7 +46,6 @@ func (p *PebbleDB) ReadKey(key []byte) ([]byte, error) {
 // DeleteKey deletes a key-value pair from the Pebble database.
 func (p *PebbleDB) DeleteKey(key []byte) error {
 	if err := p.db.Delete(key, pebble.Sync); err != nil {
-		log.Printf("Failed to delete key %s: %v", key, err)
 		return err
 	}
 	return nil
