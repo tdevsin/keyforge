@@ -11,28 +11,19 @@ message GetKeyRequest {
 // Response format for getting a key
 message GetKeyResponse {
   string key = 1; // The key for the operation
-  oneof value {
-    string string_value = 2; // Textual value
-    bytes binary_value = 3;  // Binary value
-  }
+  bytes value = 2;
 }
 
 // Request format for setting a key
 message SetKeyRequest {
   string key = 1; // The key for the operation
-  oneof value {
-    string string_value = 2; // Textual value
-    bytes binary_value = 3;  // Binary value
-  }
+  bytes value = 2;
 }
 
 // Response format for setting a key
 message SetKeyResponse {
   string key = 1; // The key for the operation
-  oneof value {
-    string string_value = 2; // Textual value
-    bytes binary_value = 3;  // Binary value
-  }
+  bytes value = 2;
 }
 
 // Request format for deleting a key

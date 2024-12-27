@@ -32,8 +32,8 @@ func TestLoggerInitialization(t *testing.T) {
 // TestLoggerSingleton ensures the logger instance is reused (singleton pattern).
 func TestLoggerSingleton(t *testing.T) {
 
-	logger1 := getLogger()
-	logger2 := getLogger()
+	logger1 := GetLogger()
+	logger2 := GetLogger()
 
 	if logger1 != logger2 {
 		t.Errorf("Expected logger1 and logger2 to be the same instance")

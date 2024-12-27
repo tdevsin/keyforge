@@ -12,7 +12,7 @@ var (
 )
 
 // getLogger returns the global logger instance. If the logger has not been initialized yet, it will create a new logger instance.
-func getLogger() *zap.Logger {
+func GetLogger() *zap.Logger {
 	once.Do(func() {
 		if log != nil {
 			// If the logger is already set, use it
@@ -31,27 +31,27 @@ func getLogger() *zap.Logger {
 
 // Info logs a message at the info level.
 func Info(msg string, fields ...zap.Field) {
-	getLogger().Info(msg, fields...)
+	GetLogger().Info(msg, fields...)
 }
 
 // Error logs a message at the error level.
 func Error(msg string, fields ...zap.Field) {
-	getLogger().Error(msg, fields...)
+	GetLogger().Error(msg, fields...)
 }
 
 // Debug logs a message at the debug level.
 func Debug(msg string, fields ...zap.Field) {
-	getLogger().Debug(msg, fields...)
+	GetLogger().Debug(msg, fields...)
 }
 
 // Warn logs a message at the warn level.
 func Warn(msg string, fields ...zap.Field) {
-	getLogger().Warn(msg, fields...)
+	GetLogger().Warn(msg, fields...)
 }
 
 // Sync flushes any buffered log entries. This should be called before exiting the program.
 func Sync() {
-	logger := getLogger()
+	logger := GetLogger()
 	if logger != nil {
 		_ = logger.Sync()
 	}

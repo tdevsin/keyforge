@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 
-	"github.com/google/uuid"
+	"github.com/tdevsin/keyforge/internal/api/controller"
 	"github.com/tdevsin/keyforge/internal/proto"
 )
 
@@ -14,22 +14,12 @@ type KVHandler struct {
 
 // GetKey returns the value for the given key
 func (*KVHandler) GetKey(ctx context.Context, req *proto.GetKeyRequest) (*proto.GetKeyResponse, error) {
-	return &proto.GetKeyResponse{
-		Key: req.Key,
-		Value: &proto.GetKeyResponse_StringValue{
-			StringValue: uuid.NewString(),
-		},
-	}, nil
+	return controller.GetKey(req)
 }
 
 // SetKey sets the value for the given key
 func (*KVHandler) SetKey(ctx context.Context, req *proto.SetKeyRequest) (*proto.SetKeyResponse, error) {
-	return &proto.SetKeyResponse{
-		Key: req.Key,
-		Value: &proto.SetKeyResponse_StringValue{
-			StringValue: req.GetStringValue(),
-		},
-	}, nil
+	return controller.SetKey(req)
 }
 
 // DeleteKey deletes the key
