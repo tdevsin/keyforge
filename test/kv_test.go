@@ -16,39 +16,19 @@ func TestSetKey(t *testing.T) {
 
 	t.Run("Should set key successfully if all data is valid", func(t *testing.T) {
 		request := &proto.SetKeyRequest{
-			Key: "k1",
-			Value: &proto.SetKeyRequest_StringValue{
-				StringValue: "v1",
-			},
+			Key:   "k1",
+			Value: []byte("v1"),
 		}
 		response, err := client.SetKey(context.Background(), request)
 
 		assert.Nil(t, err)
-		assert.Equal(t, "k1", response.Key)
-		assert.Equal(t, "v1", response.GetStringValue())
-		assert.Nil(t, response.GetBinaryValue())
-	})
-
-	t.Run("Should return binary value if binary value is provided", func(t *testing.T) {
-		request := &proto.SetKeyRequest{
-			Key: "k2",
-			Value: &proto.SetKeyRequest_BinaryValue{
-				BinaryValue: []byte{1, 2, 3},
-			},
-		}
-		response, err := client.SetKey(context.Background(), request)
-
-		assert.Nil(t, err)
-		assert.Equal(t, "k2", response.Key)
-		assert.Nil(t, response.GetStringValue())
-		assert.Equal(t, []byte{1, 2, 3}, response.GetBinaryValue())
+		assert.Equal(t, "k1", response.GetKey())
+		assert.Equal(t, "v1", string(response.GetValue()))
 	})
 
 	t.Run("Should return error if invalid key is provided", func(t *testing.T) {
 		request := &proto.SetKeyRequest{
-			Value: &proto.SetKeyRequest_StringValue{
-				StringValue: "v1",
-			},
+			Value: []byte("v1"),
 		}
 		response, err := client.SetKey(context.Background(), request)
 
@@ -75,10 +55,8 @@ func TestGetKey(t *testing.T) {
 
 	t.Run("Should return key successfully if key is found", func(t *testing.T) {
 		request := &proto.SetKeyRequest{
-			Key: "k1",
-			Value: &proto.SetKeyRequest_StringValue{
-				StringValue: "v1",
-			},
+			Key:   "k1",
+			Value: []byte("v1"),
 		}
 		client.SetKey(context.Background(), request)
 
@@ -88,9 +66,8 @@ func TestGetKey(t *testing.T) {
 		response, err := client.GetKey(context.Background(), getRequest)
 
 		assert.Nil(t, err)
-		assert.Equal(t, "k1", response.Key)
-		assert.Equal(t, "v1", response.GetStringValue())
-		assert.Nil(t, response.GetBinaryValue())
+		assert.Equal(t, "k1", response.GetKey())
+		assert.Equal(t, "v1", string(response.GetValue()))
 	})
 }
 
@@ -112,10 +89,8 @@ func TestDeleteKey(t *testing.T) {
 
 	t.Run("Should delete key successfully if key is found", func(t *testing.T) {
 		request := &proto.SetKeyRequest{
-			Key: "k1",
-			Value: &proto.SetKeyRequest_StringValue{
-				StringValue: "v1",
-			},
+			Key:   "k1",
+			Value: []byte("v1"),
 		}
 		client.SetKey(context.Background(), request)
 
