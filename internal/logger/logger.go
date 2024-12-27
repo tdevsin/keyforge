@@ -6,6 +6,14 @@ import (
 	"go.uber.org/zap"
 )
 
+type Logging interface {
+	Info(msg string, fields ...zap.Field)
+	Error(msg string, fields ...zap.Field)
+	Debug(msg string, fields ...zap.Field)
+	Warn(msg string, fields ...zap.Field)
+	Sync()
+}
+
 type Logger struct {
 	Logger *zap.Logger
 }

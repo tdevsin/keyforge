@@ -12,9 +12,9 @@ type Config struct {
 	// RootDir will contain all project related files like config, database etc.
 	RootDir string
 	// Logger is the instance of zap logger. This can be used for logging.
-	Logger *logger.Logger
+	Logger logger.Logging
 	// Db is the instance of pebble.
-	Db *storage.PebbleDB
+	Db storage.Database
 }
 
 var config Config

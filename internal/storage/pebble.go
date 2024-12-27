@@ -5,6 +5,21 @@ import (
 	"github.com/tdevsin/keyforge/internal/logger"
 )
 
+// Database defines the methods required to interact with a key-value storage.
+type Database interface {
+	// Close closes the Pebble database.
+	Close() error
+
+	// WriteKey writes a key-value pair to the database.
+	WriteKey(key, value []byte) error
+
+	// ReadKey reads the value of a given key from the database.
+	ReadKey(key []byte) ([]byte, error)
+
+	// DeleteKey deletes a key-value pair from the database.
+	DeleteKey(key []byte) error
+}
+
 type PebbleDB struct {
 	db *pebble.DB
 }
