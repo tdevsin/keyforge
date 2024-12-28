@@ -55,6 +55,7 @@ func runApp(t *testing.T) (*exec.Cmd, func()) {
 		if e != nil {
 			// If the server is not running, wait for 2 seconds and try again
 			t.Log("Waiting for the application to start")
+			conn.Close()
 			time.Sleep(2 * time.Second)
 			continue
 		} else {
