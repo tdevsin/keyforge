@@ -1,9 +1,12 @@
 package controller
 
 import (
+	"errors"
 	"testing"
 
+	"github.com/cockroachdb/pebble"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/tdevsin/keyforge/internal/config"
 	"github.com/tdevsin/keyforge/internal/constants"
 	"github.com/tdevsin/keyforge/internal/logger"
@@ -11,126 +14,262 @@ import (
 	"github.com/tdevsin/keyforge/internal/storage"
 )
 
-// Helper function to create a test configuration
-func createTestConfig(t *testing.T) *config.Config {
-	// Create a temporary directory for the database
-	tempDir := t.TempDir()
-
-	// Initialize logger
-	log := logger.GetLogger()
-
-	// Initialize database
-	db := storage.GetDatabaseInstance(log, tempDir)
-
-	return &config.Config{
-		RootDir: tempDir,
-		Logger:  log,
-		Db:      db,
-	}
-}
-
-// Test SetKey function
 func TestSetKey(t *testing.T) {
-	cfg := createTestConfig(t)
-	defer cfg.Db.Close()
-
 	t.Run("Invalid Key", func(t *testing.T) {
+		mockDb := new(storage.MockDatabase)
+		mockLogger := new(logger.MockLogging)
+
+		c := &config.Config{
+			Db:     mockDb,
+			Logger: mockLogger,
+		}
+
 		req := &proto.SetKeyRequest{
 			Key:   "",
 			Value: []byte("value"),
 		}
-		resp, err := SetKey(cfg, req)
+
+		resp, err := SetKey(c, req)
+
 		assert.Nil(t, resp)
 		assert.Equal(t, constants.StatusErrInvalidKey, err)
 	})
 
 	t.Run("Invalid Value", func(t *testing.T) {
+		mockDb := new(storage.MockDatabase)
+		mockLogger := new(logger.MockLogging)
+
+		c := &config.Config{
+			Db:     mockDb,
+			Logger: mockLogger,
+		}
+
 		req := &proto.SetKeyRequest{
-			Key:   "key1",
+			Key:   "key",
 			Value: nil,
 		}
-		resp, err := SetKey(cfg, req)
+
+		resp, err := SetKey(c, req)
+
 		assert.Nil(t, resp)
 		assert.Equal(t, constants.StatusErrInvalidValue, err)
 	})
 
-	t.Run("Successful Write", func(t *testing.T) {
-		req := &proto.SetKeyRequest{
-			Key:   "key1",
-			Value: []byte("value1"),
+	t.Run("Database Write Error", func(t *testing.T) {
+		mockDb := new(storage.MockDatabase)
+		mockLogger := new(logger.MockLogging)
+
+		mockDb.On("WriteKey", []byte("key"), []byte("value")).Return(pebble.ErrReadOnly)
+		mockLogger.On("Error", "Some error occurred while writing key", mock.Anything)
+
+		c := &config.Config{
+			Db:     mockDb,
+			Logger: mockLogger,
 		}
-		resp, err := SetKey(cfg, req)
-		assert.NoError(t, err)
+
+		req := &proto.SetKeyRequest{
+			Key:   "key",
+			Value: []byte("value"),
+		}
+
+		resp, err := SetKey(c, req)
+
+		assert.Nil(t, resp)
+		assert.Equal(t, constants.StatusErrInternal, err)
+
+		mockDb.AssertExpectations(t)
+		mockLogger.AssertExpectations(t)
+	})
+
+	t.Run("Success", func(t *testing.T) {
+		mockDb := new(storage.MockDatabase)
+		mockLogger := new(logger.MockLogging)
+
+		mockDb.On("WriteKey", []byte("key"), []byte("value")).Return(nil)
+
+		c := &config.Config{
+			Db:     mockDb,
+			Logger: mockLogger,
+		}
+
+		req := &proto.SetKeyRequest{
+			Key:   "key",
+			Value: []byte("value"),
+		}
+
+		resp, err := SetKey(c, req)
+
 		assert.NotNil(t, resp)
-		assert.Equal(t, "key1", resp.Key)
-		assert.Equal(t, []byte("value1"), resp.Value)
+		assert.Equal(t, &proto.SetKeyResponse{
+			Key:   "key",
+			Value: []byte("value"),
+		}, resp)
+		assert.Nil(t, err)
+
+		mockDb.AssertExpectations(t)
 	})
 }
 
-// Test GetKey function
 func TestGetKey(t *testing.T) {
-	cfg := createTestConfig(t)
-	defer cfg.Db.Close()
-
 	t.Run("Invalid Key", func(t *testing.T) {
+		mockDb := new(storage.MockDatabase)
+		mockLogger := new(logger.MockLogging)
+
+		c := &config.Config{
+			Db:     mockDb,
+			Logger: mockLogger,
+		}
+
 		req := &proto.GetKeyRequest{
 			Key: "",
 		}
-		resp, err := GetKey(cfg, req)
+
+		resp, err := GetKey(c, req)
+
 		assert.Nil(t, resp)
 		assert.Equal(t, constants.StatusErrInvalidKey, err)
 	})
 
 	t.Run("Key Not Found", func(t *testing.T) {
-		req := &proto.GetKeyRequest{
-			Key: "nonexistent-key",
+		mockDb := new(storage.MockDatabase)
+		mockLogger := new(logger.MockLogging)
+
+		mockDb.On("ReadKey", []byte("key")).Return([]byte(nil), pebble.ErrNotFound)
+
+		c := &config.Config{
+			Db:     mockDb,
+			Logger: mockLogger,
 		}
-		resp, err := GetKey(cfg, req)
+
+		req := &proto.GetKeyRequest{
+			Key: "key",
+		}
+
+		resp, err := GetKey(c, req)
+
 		assert.Nil(t, resp)
 		assert.Equal(t, constants.StatusErrKeyNotFound, err)
+
+		mockDb.AssertExpectations(t)
 	})
 
-	t.Run("Successful Read", func(t *testing.T) {
-		// Prepopulate the database
-		err := cfg.Db.WriteKey([]byte("key1"), []byte("value1"))
-		assert.NoError(t, err)
+	t.Run("Database Error", func(t *testing.T) {
+		mockDb := new(storage.MockDatabase)
+		mockLogger := new(logger.MockLogging)
+
+		mockDb.On("ReadKey", []byte("key")).Return([]byte(nil), errors.New("db error"))
+
+		c := &config.Config{
+			Db:     mockDb,
+			Logger: mockLogger,
+		}
 
 		req := &proto.GetKeyRequest{
-			Key: "key1",
+			Key: "key",
 		}
-		resp, err := GetKey(cfg, req)
-		assert.NoError(t, err)
+
+		resp, err := GetKey(c, req)
+
+		assert.Nil(t, resp)
+		assert.Equal(t, constants.StatusErrInternal, err)
+
+		mockDb.AssertExpectations(t)
+	})
+
+	t.Run("Success", func(t *testing.T) {
+		mockDb := new(storage.MockDatabase)
+		mockLogger := new(logger.MockLogging)
+
+		mockDb.On("ReadKey", []byte("key")).Return([]byte("value"), nil)
+
+		c := &config.Config{
+			Db:     mockDb,
+			Logger: mockLogger,
+		}
+
+		req := &proto.GetKeyRequest{
+			Key: "key",
+		}
+
+		resp, err := GetKey(c, req)
+
 		assert.NotNil(t, resp)
-		assert.Equal(t, "key1", resp.Key)
-		assert.Equal(t, []byte("value1"), resp.Value)
+		assert.Equal(t, &proto.GetKeyResponse{
+			Key:   "key",
+			Value: []byte("value"),
+		}, resp)
+		assert.Nil(t, err)
+
+		mockDb.AssertExpectations(t)
 	})
 }
 
-// Test DeleteKey function
 func TestDeleteKey(t *testing.T) {
-	cfg := createTestConfig(t)
-	defer cfg.Db.Close()
-
 	t.Run("Invalid Key", func(t *testing.T) {
+		mockDb := new(storage.MockDatabase)
+		mockLogger := new(logger.MockLogging)
+
+		c := &config.Config{
+			Db:     mockDb,
+			Logger: mockLogger,
+		}
+
 		req := &proto.DeleteKeyRequest{
 			Key: "",
 		}
-		resp, err := DeleteKey(cfg, req)
+
+		resp, err := DeleteKey(c, req)
+
 		assert.Nil(t, resp)
 		assert.Equal(t, constants.StatusErrInvalidKey, err)
 	})
 
-	t.Run("Successful Delete", func(t *testing.T) {
-		// Prepopulate the database
-		err := cfg.Db.WriteKey([]byte("key1"), []byte("value1"))
-		assert.NoError(t, err)
+	t.Run("Database Error", func(t *testing.T) {
+		mockDb := new(storage.MockDatabase)
+		mockLogger := new(logger.MockLogging)
+
+		mockDb.On("DeleteKey", []byte("key")).Return(errors.New("db error"))
+
+		c := &config.Config{
+			Db:     mockDb,
+			Logger: mockLogger,
+		}
 
 		req := &proto.DeleteKeyRequest{
-			Key: "key1",
+			Key: "key",
 		}
-		resp, err := DeleteKey(cfg, req)
-		assert.NoError(t, err)
+
+		resp, err := DeleteKey(c, req)
+
+		assert.Nil(t, resp)
+		assert.Equal(t, constants.StatusErrInternal, err)
+
+		mockDb.AssertExpectations(t)
+	})
+
+	t.Run("Success", func(t *testing.T) {
+		mockDb := new(storage.MockDatabase)
+		mockLogger := new(logger.MockLogging)
+
+		mockDb.On("DeleteKey", []byte("key")).Return(nil)
+
+		c := &config.Config{
+			Db:     mockDb,
+			Logger: mockLogger,
+		}
+
+		req := &proto.DeleteKeyRequest{
+			Key: "key",
+		}
+
+		resp, err := DeleteKey(c, req)
+
 		assert.NotNil(t, resp)
-		assert.Equal(t, "key1", resp.Key)
+		assert.Equal(t, &proto.DeleteKeyResponse{
+			Key: "key",
+		}, resp)
+		assert.Nil(t, err)
+
+		mockDb.AssertExpectations(t)
 	})
 }
