@@ -19,11 +19,13 @@ build:
 # Run the server using the CLI
 .PHONY: run-server
 run-server:
+	go build -o $(OUTPUT_BINARY) main.go
 	$(OUTPUT_BINARY) start
 
 # Run the CLI with custom arguments
 .PHONY: run-cli
 run-cli:
+	go build -o $(OUTPUT_BINARY) main.go
 	$(OUTPUT_BINARY) $(ARGS)
 
 # Generate Go code from proto files
