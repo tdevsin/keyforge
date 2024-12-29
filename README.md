@@ -32,3 +32,33 @@ And in a lot more usecases.
 - [CLI Specification](https://tdevs.in/golang_in_production/contents/key-forge/cli-specification)
 
 Though this project is part of a learning initiative, it is highly performant and of excellent quality. It can still be used in production if it fits your use case.
+
+## Keyforge API Benchmark Results
+
+### Benchmark Configuration
+
+- **CPU**: Intel(R) Core(TM) i5-7300U CPU @ 2.60GHz
+- **Go Version**: `go1.23.4`
+- **Operating System**: Linux (amd64)
+- **Test Duration**: 10 seconds per operation
+- **Concurrency**: 512 parallelism for both `GetKey` and `SetKey`
+
+### GetKey Operation
+
+| Metric                 | Value              |
+| ---------------------- | ------------------ |
+| **Iterations**         | 13,513,574         |
+| **Time per Operation** | 855.8 ns           |
+| **Throughput**         | ~1,168,252 req/sec |
+| **Memory Usage**       | 192 B/op           |
+| **Allocations**        | 3 allocs/op        |
+
+### SetKey Operation
+
+| Metric                 | Value           |
+| ---------------------- | --------------- |
+| **Iterations**         | 1,583,232       |
+| **Time per Operation** | 10,467 ns       |
+| **Throughput**         | ~95,508 req/sec |
+| **Memory Usage**       | 391 B/op        |
+| **Allocations**        | 8 allocs/op     |
