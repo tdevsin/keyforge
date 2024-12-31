@@ -5,8 +5,10 @@ import (
 	"testing"
 
 	"github.com/cockroachdb/pebble"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/tdevsin/keyforge/internal/cluster"
 	"github.com/tdevsin/keyforge/internal/config"
 	"github.com/tdevsin/keyforge/internal/constants"
 	"github.com/tdevsin/keyforge/internal/logger"
@@ -61,10 +63,17 @@ func TestSetKey(t *testing.T) {
 
 		mockDb.On("WriteKey", []byte("key"), []byte("value")).Return(pebble.ErrReadOnly)
 		mockLogger.On("Error", "Some error occurred while writing key", mock.Anything)
-
+		id := uuid.NewString()
+		node := cluster.Node{
+			ID: id,
+		}
+		hashring := cluster.NewHashRing()
+		hashring.AddNode(node)
 		c := &config.Config{
-			Db:     mockDb,
-			Logger: mockLogger,
+			Db:       mockDb,
+			Logger:   mockLogger,
+			NodeInfo: &node,
+			HashRing: hashring,
 		}
 
 		req := &proto.SetKeyRequest{
@@ -84,12 +93,19 @@ func TestSetKey(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		mockDb := new(storage.MockDatabase)
 		mockLogger := new(logger.MockLogging)
-
+		id := uuid.NewString()
+		node := cluster.Node{
+			ID: id,
+		}
+		hashring := cluster.NewHashRing()
+		hashring.AddNode(node)
 		mockDb.On("WriteKey", []byte("key"), []byte("value")).Return(nil)
 
 		c := &config.Config{
-			Db:     mockDb,
-			Logger: mockLogger,
+			Db:       mockDb,
+			Logger:   mockLogger,
+			NodeInfo: &node,
+			HashRing: hashring,
 		}
 
 		req := &proto.SetKeyRequest{
@@ -135,10 +151,17 @@ func TestGetKey(t *testing.T) {
 		mockLogger := new(logger.MockLogging)
 
 		mockDb.On("ReadKey", []byte("key")).Return([]byte(nil), pebble.ErrNotFound)
-
+		id := uuid.NewString()
+		node := cluster.Node{
+			ID: id,
+		}
+		hashring := cluster.NewHashRing()
+		hashring.AddNode(node)
 		c := &config.Config{
-			Db:     mockDb,
-			Logger: mockLogger,
+			Db:       mockDb,
+			Logger:   mockLogger,
+			NodeInfo: &node,
+			HashRing: hashring,
 		}
 
 		req := &proto.GetKeyRequest{
@@ -158,12 +181,18 @@ func TestGetKey(t *testing.T) {
 		mockLogger := new(logger.MockLogging)
 
 		mockDb.On("ReadKey", []byte("key")).Return([]byte(nil), errors.New("db error"))
-
-		c := &config.Config{
-			Db:     mockDb,
-			Logger: mockLogger,
+		id := uuid.NewString()
+		node := cluster.Node{
+			ID: id,
 		}
-
+		hashring := cluster.NewHashRing()
+		hashring.AddNode(node)
+		c := &config.Config{
+			Db:       mockDb,
+			Logger:   mockLogger,
+			NodeInfo: &node,
+			HashRing: hashring,
+		}
 		req := &proto.GetKeyRequest{
 			Key: "key",
 		}
@@ -179,12 +208,19 @@ func TestGetKey(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		mockDb := new(storage.MockDatabase)
 		mockLogger := new(logger.MockLogging)
-
+		id := uuid.NewString()
+		node := cluster.Node{
+			ID: id,
+		}
+		hashring := cluster.NewHashRing()
+		hashring.AddNode(node)
 		mockDb.On("ReadKey", []byte("key")).Return([]byte("value"), nil)
 
 		c := &config.Config{
-			Db:     mockDb,
-			Logger: mockLogger,
+			Db:       mockDb,
+			Logger:   mockLogger,
+			NodeInfo: &node,
+			HashRing: hashring,
 		}
 
 		req := &proto.GetKeyRequest{
@@ -229,10 +265,17 @@ func TestDeleteKey(t *testing.T) {
 		mockLogger := new(logger.MockLogging)
 
 		mockDb.On("DeleteKey", []byte("key")).Return(errors.New("db error"))
-
+		id := uuid.NewString()
+		node := cluster.Node{
+			ID: id,
+		}
+		hashring := cluster.NewHashRing()
+		hashring.AddNode(node)
 		c := &config.Config{
-			Db:     mockDb,
-			Logger: mockLogger,
+			Db:       mockDb,
+			Logger:   mockLogger,
+			NodeInfo: &node,
+			HashRing: hashring,
 		}
 
 		req := &proto.DeleteKeyRequest{
@@ -250,12 +293,19 @@ func TestDeleteKey(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		mockDb := new(storage.MockDatabase)
 		mockLogger := new(logger.MockLogging)
-
+		id := uuid.NewString()
+		node := cluster.Node{
+			ID: id,
+		}
+		hashring := cluster.NewHashRing()
+		hashring.AddNode(node)
 		mockDb.On("DeleteKey", []byte("key")).Return(nil)
 
 		c := &config.Config{
-			Db:     mockDb,
-			Logger: mockLogger,
+			Db:       mockDb,
+			Logger:   mockLogger,
+			NodeInfo: &node,
+			HashRing: hashring,
 		}
 
 		req := &proto.DeleteKeyRequest{
