@@ -10,7 +10,16 @@ import (
 	"github.com/tdevsin/keyforge/internal/storage"
 )
 
+type Environment int
+
+const (
+	Dev Environment = iota
+	Prod
+)
+
 type Config struct {
+	// Environment is the environment in which the server is running
+	Environment Environment
 	// RootDir will contain all project related files like config, database etc.
 	RootDir string
 	// Logger is the instance of zap logger. This can be used for logging.
@@ -33,10 +42,10 @@ func folderExists(path string) bool {
 	return info.IsDir()
 }
 
-func ReadConfig() *Config {
+func ReadConfig(env Environment) *Config {
 	homeDir, _ := os.UserHomeDir()
 	rootDir := path.Join(homeDir, ".keyforge")
-	l := logger.GetLogger()
+
 	if !folderExists(rootDir) {
 		os.Mkdir(rootDir, 0755)
 	}
@@ -51,13 +60,14 @@ func ReadConfig() *Config {
 
 	hashring := cluster.NewHashRing()
 	hashring.AddNode(thisNode)
-
+	l := logger.GetLogger(env == Prod, id)
 	config = Config{
-		RootDir:  rootDir,
-		Logger:   l,
-		Db:       storage.GetDatabaseInstance(l, rootDir),
-		HashRing: hashring,
-		NodeInfo: &thisNode,
+		RootDir:     rootDir,
+		Logger:      l,
+		Db:          storage.GetDatabaseInstance(l, rootDir),
+		HashRing:    hashring,
+		NodeInfo:    &thisNode,
+		Environment: env,
 	}
 	return &config
 }
