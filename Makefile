@@ -20,7 +20,7 @@ build:
 .PHONY: run-server
 run-server:
 	go build -o $(OUTPUT_BINARY) main.go
-	$(OUTPUT_BINARY) start
+	$(OUTPUT_BINARY) start -a localhost:8080
 
 # Run the CLI with custom arguments
 .PHONY: run-cli

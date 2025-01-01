@@ -55,6 +55,7 @@ func StartGRPCServer(conf *config.Config) error {
 	// Register services
 	proto.RegisterKeyServiceServer(server, &handler.KVHandler{Conf: conf})
 	proto.RegisterHealthServiceServer(server, &handler.HealthHandler{Conf: conf})
+	proto.RegisterClusterServiceServer(server, &handler.ClusterHandler{Conf: conf})
 
 	// Serve the server
 	if err := server.Serve(lis); err != nil {
