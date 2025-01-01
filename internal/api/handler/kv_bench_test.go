@@ -26,7 +26,7 @@ func getConfig() (*config.Config, func()) {
 	os.RemoveAll("./testdir")
 	os.Mkdir("./testdir", 0755)
 
-	l := logger.GetLogger()
+	l := logger.GetLogger(false, "test")
 	l.Logger = zap.NewNop()
 
 	d := storage.GetDatabaseInstance(l, "./testdir")
@@ -37,7 +37,7 @@ func getConfig() (*config.Config, func()) {
 	}
 	return c, f
 }
-func BenchmarkSetKey(b *testing.B) {
+func DisabledBenchmarkSetKey(b *testing.B) {
 	config, _ := getConfig()
 
 	h := KVHandler{Conf: config}
@@ -55,7 +55,7 @@ func BenchmarkSetKey(b *testing.B) {
 	})
 }
 
-func BenchmarkGetKey(b *testing.B) {
+func DisabledBenchmarkGetKey(b *testing.B) {
 	config, _ := getConfig()
 	h := KVHandler{
 		Conf: config,

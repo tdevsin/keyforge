@@ -23,7 +23,7 @@ func setupTestDB(tb testing.TB) *PebbleDB {
 		log.Fatalf("Failed to clean up database directory: %v", err)
 	}
 
-	db := GetDatabaseInstance(logger.GetLogger(), dbPath)
+	db := GetDatabaseInstance(logger.GetLogger(false, "test"), dbPath)
 	if tb != nil {
 		assert.NoError(tb, err, "Failed to open database")
 	} else if err != nil {

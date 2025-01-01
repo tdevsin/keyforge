@@ -19,4 +19,4 @@ RUN chmod +x /app/keyforge
 EXPOSE 8080
 
 # Start command is hardcoded temporarily. This will be changed to a more dynamic approach in the future.
-ENTRYPOINT ["./keyforge", "start"]
+ENTRYPOINT ["./keyforge"]

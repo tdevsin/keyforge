@@ -6,6 +6,7 @@ require (
 	github.com/bojand/ghz v0.120.0
 	github.com/cockroachdb/pebble v1.1.2
 	github.com/google/uuid v1.6.0
+	github.com/jhump/protoreflect v1.15.1
 )
 
 require (
@@ -33,7 +34,6 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/huandu/xstrings v1.3.3 // indirect
 	github.com/imdario/mergo v0.3.11 // indirect
-	github.com/jhump/protoreflect v1.15.1 // indirect
 	github.com/jinzhu/configor v1.2.1 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
@@ -70,7 +70,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0
-	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67 // indirect
+	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67
 	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect

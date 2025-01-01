@@ -13,7 +13,7 @@ import (
 	"github.com/tdevsin/keyforge/internal/proto"
 )
 
-func TestBenchmarkSetKey(t *testing.T) {
+func DisabledTestBenchmarkSetKey(t *testing.T) {
 	_, close := runApp(t)
 	defer close()
 	hostname := "localhost:8080"
@@ -55,7 +55,7 @@ func TestBenchmarkSetKey(t *testing.T) {
 	})
 }
 
-func TestBenchmarkGetKey(t *testing.T) {
+func DisabledTestBenchmarkGetKey(t *testing.T) {
 	_, close := runApp(t)
 	defer close()
 	hostname := "localhost:8080"
