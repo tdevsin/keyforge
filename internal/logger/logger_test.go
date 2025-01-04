@@ -20,7 +20,7 @@ func createTestLogger(level zapcore.Level, buffer *bytes.Buffer) *Logger {
 
 // TestSync ensures Sync works without errors.
 func TestSync(t *testing.T) {
-	logger := GetLogger()
+	logger := GetLogger(false, "test")
 	defer func() {
 		if r := recover(); r != nil {
 			t.Errorf("Sync caused a panic: %v", r)

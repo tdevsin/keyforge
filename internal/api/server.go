@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/google/uuid"
 	"github.com/tdevsin/keyforge/internal/api/handler"
 	"github.com/tdevsin/keyforge/internal/config"
 	"github.com/tdevsin/keyforge/internal/proto"
@@ -26,10 +25,22 @@ func getAvailableListener(start, end int) (net.Listener, error) {
 
 // StartGRPCServer starts a GRPC server on a port between 8080 and 8100
 func StartGRPCServer(conf *config.Config) error {
-	lis, err := getAvailableListener(8080, 8100)
-	if err != nil {
-		conf.Logger.Error("Failed to find an available port", zap.Error(err))
-		return err
+	var lis net.Listener
+	var err error
+	if conf.Environment == config.Dev {
+		conf.Logger.Info("Running in development mode")
+		lis, err = getAvailableListener(8080, 8100)
+		if err != nil {
+			conf.Logger.Error("Failed to find an available port", zap.Error(err))
+			return err
+		}
+	} else {
+		conf.Logger.Info("Running in production mode")
+		lis, err = net.Listen("tcp", ":8080")
+		if err != nil {
+			conf.Logger.Error("Failed to listen on port 8080", zap.Error(err))
+			return err
+		}
 	}
 
 	// Setup gRPC server
@@ -39,12 +50,12 @@ func StartGRPCServer(conf *config.Config) error {
 	reflection.Register(server)
 
 	// Generate a new NodeId. This will be used to uniquely identify the node
-	nodeId := uuid.New().String()
-	conf.Logger.Info("Starting GRPC Server", zap.String("port", lis.Addr().String()), zap.String("nodeId", nodeId))
+	conf.Logger.Info("Starting GRPC Server", zap.String("address", lis.Addr().String()))
 
 	// Register services
 	proto.RegisterKeyServiceServer(server, &handler.KVHandler{Conf: conf})
 	proto.RegisterHealthServiceServer(server, &handler.HealthHandler{Conf: conf})
+	proto.RegisterClusterServiceServer(server, &handler.ClusterHandler{Conf: conf})
 
 	// Serve the server
 	if err := server.Serve(lis); err != nil {

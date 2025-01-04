@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type Logging interface {
@@ -19,15 +20,22 @@ type Logger struct {
 }
 
 // getLogger returns the global logger instance. If the logger has not been initialized yet, it will create a new logger instance.
-func GetLogger() *Logger {
+func GetLogger(isProd bool, nodeId string) *Logger {
 	var logger Logger
 	var err error
-	baseLogger, err := zap.NewProduction() // Replace with zap.NewDevelopment() for dev env
+	var baseLogger *zap.Logger
+	if isProd {
+		config := zap.NewProductionConfig()
+		config.EncoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05.000 MST")
+		baseLogger, err = config.Build()
+	} else {
+		baseLogger, err = zap.NewDevelopment()
+	}
 	if err != nil {
 		logger.Logger = zap.NewNop() // Fallback to no-op logger
 		return &logger
 	}
-	logger.Logger = baseLogger.WithOptions(zap.AddCaller(), zap.AddCallerSkip(1))
+	logger.Logger = baseLogger.WithOptions(zap.AddCaller(), zap.AddCallerSkip(1)).With(zap.String("nodeId", nodeId))
 	return &logger
 }
 

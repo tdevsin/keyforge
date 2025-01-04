@@ -36,7 +36,7 @@ func TestMain(m *testing.M) {
 
 // runApp start and stop the server for each test
 func runApp(t *testing.T) (*exec.Cmd, func()) {
-	cmd := exec.Command(appBinary, "start")
+	cmd := exec.Command(appBinary, "start", "--address", "localhost:8080", "--env", "dev")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
