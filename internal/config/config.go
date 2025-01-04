@@ -59,7 +59,7 @@ func ReadConfig(env Environment, nodeAddress string) *Config {
 		},
 	}
 
-	clusterInfo := cluster.NewCluster()
+	clusterInfo := cluster.NewCluster(id, 2)
 	hashring := cluster.NewHashRing()
 	// Allows HashRing to know when a node is added, updated or removed via the Observer interface
 	clusterInfo.RegisterObserver(hashring)

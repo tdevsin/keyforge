@@ -49,7 +49,7 @@ func StartNodeSetupInCluster(conf *config.Config, bootstrapNodeAddress string) e
 
 	// Send the updated cluster state to the bootstrap node
 	var req proto.ClusterState
-	controller.MapClusterStateToProto(&req, conf)
+	conf.ClusterInfo.GetClusterInfo().MapClusterStateToProto(&req)
 	_, err = client.SetClusterState(context.TODO(), &req)
 
 	// Panic if state update fails

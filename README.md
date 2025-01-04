@@ -31,8 +31,6 @@ And in a lot more usecases.
 - [API Specification](https://tdevs.in/golang_in_production/contents/key-forge/api-specification)
 - [CLI Specification](https://tdevs.in/golang_in_production/contents/key-forge/cli-specification)
 
-Though this project is part of a learning initiative, it is highly performant and of excellent quality. It can still be used in production if it fits your use case.
-
 ## Keyforge API Benchmark Results
 
 ### Benchmark Configuration

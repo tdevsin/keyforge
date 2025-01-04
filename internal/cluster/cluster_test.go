@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -10,13 +11,13 @@ import (
 
 func TestIncrementVersion(t *testing.T) {
 	t.Run("Test increment version", func(t *testing.T) {
-		cluster := NewCluster()
+		cluster := NewCluster("node1", 2)
 		cluster.IncrementVersion()
 		assert.Equal(t, 0, cluster.Version)
 	})
 
 	t.Run("Test increment version multiple times", func(t *testing.T) {
-		cluster := NewCluster()
+		cluster := NewCluster("node1", 2)
 		cluster.IncrementVersion()
 		cluster.IncrementVersion()
 		cluster.IncrementVersion()
@@ -26,7 +27,7 @@ func TestIncrementVersion(t *testing.T) {
 
 func TestAddOrUpdateNode(t *testing.T) {
 	t.Run("Test add node", func(t *testing.T) {
-		cluster := NewCluster()
+		cluster := NewCluster("node1", 2)
 		node := Node{
 			ID: "node1",
 		}
@@ -35,7 +36,7 @@ func TestAddOrUpdateNode(t *testing.T) {
 	})
 
 	t.Run("Test update node", func(t *testing.T) {
-		cluster := NewCluster()
+		cluster := NewCluster("node1", 2)
 		node := Node{
 			ID: "node1",
 		}
@@ -55,7 +56,7 @@ func TestAddOrUpdateNode(t *testing.T) {
 
 func TestRemoveNode(t *testing.T) {
 	t.Run("Test remove node", func(t *testing.T) {
-		cluster := NewCluster()
+		cluster := NewCluster("node1", 2)
 		node := Node{
 			ID: "node1",
 		}
@@ -71,7 +72,7 @@ func TestRemoveNode(t *testing.T) {
 
 func TestGetNode(t *testing.T) {
 	t.Run("Test get node", func(t *testing.T) {
-		cluster := NewCluster()
+		cluster := NewCluster("node1", 2)
 		node := Node{
 			ID: "node1",
 		}
@@ -84,7 +85,7 @@ func TestGetNode(t *testing.T) {
 	})
 
 	t.Run("Test get node not found", func(t *testing.T) {
-		cluster := NewCluster()
+		cluster := NewCluster("node1", 2)
 		node := Node{
 			ID: "node1",
 		}
@@ -98,7 +99,7 @@ func TestGetNode(t *testing.T) {
 
 func TestGetHealthyNodes(t *testing.T) {
 	t.Run("Test get healthy nodes", func(t *testing.T) {
-		cluster := NewCluster()
+		cluster := NewCluster("node1", 2)
 		node1 := Node{
 			ID: "node1",
 			Health: Health{
@@ -144,7 +145,7 @@ func TestGetHealthyNodes(t *testing.T) {
 
 func TestConcurrency(t *testing.T) {
 	t.Run("Test concurrency safety of ClusterManager methods", func(t *testing.T) {
-		cluster := NewCluster()
+		cluster := NewCluster("node1", 2)
 
 		node1 := Node{
 			ID: "node1",
@@ -234,7 +235,7 @@ func TestConcurrency(t *testing.T) {
 }
 
 func TestMergeClusterState(t *testing.T) {
-	cluster := NewCluster()
+	cluster := NewCluster("node1", 2)
 
 	t.Run("Merge Newer State", func(t *testing.T) {
 		// Initial cluster state
@@ -361,6 +362,115 @@ func TestMergeClusterState(t *testing.T) {
 		}
 		if cluster.Version != 3 {
 			t.Errorf("Expected version 3, got %d", cluster.Version)
+		}
+	})
+}
+func TestGetRandomNodesForGossip(t *testing.T) {
+	// Helper function to create test nodes
+	createNode := func(id string, status Status) Node {
+		return Node{
+			ID:      id,
+			Address: "127.0.0.1:5000",
+			Health:  Health{Status: status},
+		}
+	}
+
+	// Initialize a new cluster with self ID and gossipN
+	cluster := NewCluster("node1", 3)
+
+	// Add initial nodes
+	for i := 1; i <= 5; i++ {
+		cluster.AddOrUpdateNode(createNode("node"+strconv.Itoa(i), Healthy))
+	}
+
+	t.Run("ensure all nodes are eventually covered", func(t *testing.T) {
+		results := make(map[string]bool)
+		numCalls := 50 // Perform multiple calls to increase coverage probability
+
+		// Collect results from multiple calls
+		for i := 0; i < numCalls; i++ {
+			nodes := cluster.GetRandomNodesForGossip()
+			for _, node := range nodes {
+				results[node.ID] = true
+			}
+		}
+
+		// Verify all nodes except self were selected at least once
+		for id := range cluster.Nodes {
+			if id == "node1" { // Exclude self
+				continue
+			}
+			if !results[id] {
+				t.Errorf("node %s was never selected in multiple calls", id)
+			}
+		}
+	})
+
+	t.Run("ensure increasing nodes still results in complete coverage", func(t *testing.T) {
+		// Add more nodes
+		for i := 6; i <= 20; i++ {
+			cluster.AddOrUpdateNode(createNode("node"+strconv.Itoa(i), Healthy))
+		}
+
+		results := make(map[string]bool)
+		numCalls := 100 // Perform enough calls to ensure coverage for larger node sets
+
+		// Collect results from multiple calls
+		for i := 0; i < numCalls; i++ {
+			nodes := cluster.GetRandomNodesForGossip()
+			for _, node := range nodes {
+				results[node.ID] = true
+			}
+		}
+
+		// Verify all nodes except self were selected at least once
+		for id := range cluster.Nodes {
+			if id == "node1" { // Exclude self
+				continue
+			}
+			if !results[id] {
+				t.Errorf("node %s was never selected in multiple calls", id)
+			}
+		}
+	})
+
+	t.Run("ensure even distribution of node selection", func(t *testing.T) {
+		results := make(map[string]int)
+		numCalls := 200
+
+		// Collect selection counts from multiple calls
+		for i := 0; i < numCalls; i++ {
+			nodes := cluster.GetRandomNodesForGossip()
+			for _, node := range nodes {
+				results[node.ID]++
+			}
+		}
+
+		// Check distribution of selection
+		for id := range cluster.Nodes {
+			if id == "node1" { // Exclude self
+				continue
+			}
+			if count, exists := results[id]; !exists || count == 0 {
+				t.Errorf("node %s was never selected", id)
+			}
+		}
+
+		// Log selection counts for debugging
+		t.Logf("Node selection distribution: %+v", results)
+	})
+
+	t.Run("handle edge case where no healthy nodes exist", func(t *testing.T) {
+		// Mark all nodes as unhealthy
+		for id := range cluster.Nodes {
+			node := cluster.Nodes[id]
+			node.Health.Status = PermanentFailed
+			cluster.Nodes[id] = node
+		}
+
+		nodes := cluster.GetRandomNodesForGossip()
+		if len(nodes) != 0 {
+			t.Errorf("expected 0 nodes, got %d", len(nodes))
 		}
 	})
 }
