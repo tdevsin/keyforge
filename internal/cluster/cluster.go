@@ -1,8 +1,10 @@
+// Package cluster manages the cluster state and provides utilities for interacting with it.
 package cluster
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// ClusterManager defines the interface for cluster operations.
 type ClusterManager interface {
 	GetClusterInfo() *ClusterInfo                     // Retrieve the current cluster state
 	IncrementVersion()                                // Increment the cluster state version
@@ -25,57 +28,69 @@ type ClusterManager interface {
 	MapClusterStateToProto(state *proto.ClusterState) // Map the cluster state to proto
 }
 
-// ClusterInfo represents the overall state of the cluster
+// ClusterInfo represents the overall state of the cluster.
 type ClusterInfo struct {
-	mu          sync.RWMutex      // Mutex to protect concurrent access
-	Nodes       map[string]Node   // Nodes is a map of nodeId to Node
-	Version     int               // Version helps in identifying the latest cluster state
-	LastUpdated time.Time         // LastUpdated indicates the last time the cluster info was updated
-	observers   []ClusterObserver // List of observers to notify on state changes
-	selfId      string            // selfId is the ID of the current node
-	gossipN     int               // randomSelection is the number of nodes to select for gossip
+	mu             sync.RWMutex      // Mutex to protect concurrent access
+	Nodes          map[string]Node   // Nodes is a map of nodeId to Node
+	Version        int               // Version helps in identifying the latest cluster state
+	LastUpdated    time.Time         // LastUpdated indicates the last time the cluster info was updated
+	observers      []ClusterObserver // List of observers to notify on state changes
+	selfId         string            // selfId is the ID of the current node
+	gossipN        int               // Number of nodes to select for gossip
+	gossipInterval time.Duration     // Duration between which the cluster state sync will happen
 }
 
+// NewCluster creates and initializes a new ClusterInfo.
 func NewCluster(selfId string, gossipN int) *ClusterInfo {
-	return &ClusterInfo{
-		Nodes:       make(map[string]Node),
-		Version:     -1, // -1 indicates that this node is started for the first time and has no cluster state information
-		LastUpdated: time.Now(),
-		selfId:      selfId,
-		gossipN:     gossipN,
+	cluster := &ClusterInfo{
+		Nodes:          make(map[string]Node),
+		Version:        -1, // Indicates the node is starting for the first time
+		LastUpdated:    time.Now(),
+		selfId:         selfId,
+		gossipN:        gossipN,
+		gossipInterval: time.Second * 10,
 	}
+
+	return cluster
 }
 
+// RegisterObserver registers a new observer for cluster state changes.
 func (ci *ClusterInfo) RegisterObserver(observer ClusterObserver) {
 	ci.mu.Lock()
 	defer ci.mu.Unlock()
 	ci.observers = append(ci.observers, observer)
 }
 
-func (ci *ClusterInfo) notifyNodeAdded(node Node) {
-	for _, observer := range ci.observers {
-		observer.NodeAdded(node)
+// notifyObservers notifies all registered observers of a specific event.
+func (ci *ClusterInfo) notifyObservers(event string, nodeID string, node *Node) {
+	ci.mu.RLock()
+	observers := append([]ClusterObserver(nil), ci.observers...)
+	ci.mu.RUnlock()
+
+	for _, observer := range observers {
+		switch event {
+		case "added":
+			if node != nil {
+				observer.NodeAdded(*node)
+			}
+		case "updated":
+			if node != nil {
+				observer.NodeUpdated(*node)
+			}
+		case "removed":
+			observer.NodeRemoved(nodeID)
+		}
 	}
 }
 
-func (ci *ClusterInfo) notifyNodeUpdated(node Node) {
-	for _, observer := range ci.observers {
-		observer.NodeUpdated(node)
-	}
-}
-
-func (ci *ClusterInfo) notifyNodeRemoved(nodeID string) {
-	for _, observer := range ci.observers {
-		observer.NodeRemoved(nodeID)
-	}
-}
-
+// GetClusterInfo provides a snapshot of the current cluster state.
 func (ci *ClusterInfo) GetClusterInfo() *ClusterInfo {
 	ci.mu.RLock()
 	defer ci.mu.RUnlock()
 	return ci
 }
 
+// IncrementVersion increments the cluster state version.
 func (ci *ClusterInfo) IncrementVersion() {
 	ci.mu.Lock()
 	defer ci.mu.Unlock()
@@ -83,74 +98,83 @@ func (ci *ClusterInfo) IncrementVersion() {
 	ci.LastUpdated = time.Now()
 }
 
+// MergeClusterState merges a received cluster state with the current one.
 func (ci *ClusterInfo) MergeClusterState(receivedState *ClusterInfo) {
 	ci.mu.Lock()
 
-	// Ignore outdated states
 	if receivedState.Version < ci.Version {
 		ci.mu.Unlock()
 		return
 	}
 
-	var needToGossip bool
-	// Merge node-level data
+	var addedNodes []Node
+	var updatedNodes []Node
+
 	for nodeID, receivedNode := range receivedState.Nodes {
 		existingNode, exists := ci.Nodes[nodeID]
 
-		// Add new nodes or update existing nodes based on LastChecked
 		if !exists || receivedNode.Health.LastChecked.After(existingNode.Health.LastChecked) {
-			if !exists {
-				ci.notifyNodeAdded(receivedNode)
-			} else {
-				ci.notifyNodeUpdated(receivedNode)
-			}
 			ci.Nodes[nodeID] = receivedNode
-			needToGossip = true
+			if !exists {
+				addedNodes = append(addedNodes, receivedNode)
+			} else {
+				updatedNodes = append(updatedNodes, receivedNode)
+			}
 		}
 	}
 
-	// Update version and metadata if received state is newer
-	if receivedState.Version > ci.Version {
+	if receivedState.Version >= ci.Version {
 		ci.Version = receivedState.Version
-		needToGossip = true
 	}
-
 	ci.LastUpdated = time.Now()
-
-	// Unlock before initiating gossip as gossip also acquires the lock. It will be a deadlock in case it is not unlocked before gossip
 	ci.mu.Unlock()
-	if needToGossip && ci.Version > -1 {
-		ci.InitiateGossip()
+
+	for _, node := range addedNodes {
+		ci.notifyObservers("added", node.ID, &node)
+	}
+	for _, node := range updatedNodes {
+		ci.notifyObservers("updated", node.ID, &node)
 	}
 }
 
+// AddOrUpdateNode adds or updates a node in the cluster.
 func (ci *ClusterInfo) AddOrUpdateNode(node Node) {
 	ci.mu.Lock()
-	defer ci.mu.Unlock()
+	isNewNode := false
+
 	if _, exists := ci.Nodes[node.ID]; !exists {
-		ci.notifyNodeAdded(node)
-	} else {
-		ci.notifyNodeUpdated(node)
+		isNewNode = true
 	}
 	ci.Nodes[node.ID] = node
 	ci.LastUpdated = time.Now()
+	ci.mu.Unlock()
+
+	if isNewNode {
+		ci.notifyObservers("added", node.ID, &node)
+	} else {
+		ci.notifyObservers("updated", node.ID, &node)
+	}
 }
 
+// RemoveNode removes a node from the cluster.
 func (ci *ClusterInfo) RemoveNode(nodeID string) {
 	ci.mu.Lock()
-	defer ci.mu.Unlock()
 	delete(ci.Nodes, nodeID)
-	ci.notifyNodeRemoved(nodeID)
 	ci.LastUpdated = time.Now()
+	ci.mu.Unlock()
+
+	ci.notifyObservers("removed", nodeID, nil)
 }
 
+// GetNode retrieves a node by its ID.
 func (ci *ClusterInfo) GetNode(nodeID string) (Node, bool) {
 	ci.mu.RLock()
 	defer ci.mu.RUnlock()
-	node, ok := ci.Nodes[nodeID]
-	return node, ok
+	node, exists := ci.Nodes[nodeID]
+	return node, exists
 }
 
+// GetHealthyNodes retrieves all healthy nodes.
 func (ci *ClusterInfo) GetHealthyNodes() []Node {
 	ci.mu.RLock()
 	defer ci.mu.RUnlock()
@@ -162,14 +186,11 @@ func (ci *ClusterInfo) GetHealthyNodes() []Node {
 	}
 	return healthyNodes
 }
-func (ci *ClusterInfo) GetRandomNodesForGossip() []Node {
-	ci.mu.RLock()
-	defer ci.mu.RUnlock()
 
-	// Retrieve all healthy nodes
+// GetRandomNodesForGossip selects random nodes for gossip.
+func (ci *ClusterInfo) GetRandomNodesForGossip() []Node {
 	healthyNodes := ci.GetHealthyNodes()
 
-	// Filter out the current node (self)
 	filteredNodes := make([]Node, 0, len(healthyNodes))
 	for _, node := range healthyNodes {
 		if node.ID != ci.selfId {
@@ -177,46 +198,72 @@ func (ci *ClusterInfo) GetRandomNodesForGossip() []Node {
 		}
 	}
 
-	// Determine the effective number of nodes to select
 	n := ci.gossipN
 	if n > len(filteredNodes) {
 		n = len(filteredNodes)
 	}
 
-	// Shuffle the remaining nodes
 	r := rand.New(rand.NewSource(uint64(time.Now().UnixNano())))
 	r.Shuffle(len(filteredNodes), func(i, j int) {
 		filteredNodes[i], filteredNodes[j] = filteredNodes[j], filteredNodes[i]
 	})
 
-	// Return the first n nodes
 	return filteredNodes[:n]
 }
 
+// createClusterSnapshot creates a consistent snapshot of the current cluster state.
+func (ci *ClusterInfo) createClusterSnapshot() *ClusterInfo {
+	ci.mu.RLock()
+	defer ci.mu.RUnlock()
+
+	copiedNodes := make(map[string]Node, len(ci.Nodes))
+	for id, node := range ci.Nodes {
+		copiedNodes[id] = node
+	}
+
+	return &ClusterInfo{
+		Nodes:       copiedNodes,
+		Version:     ci.Version,
+		LastUpdated: ci.LastUpdated,
+		selfId:      ci.selfId,
+		gossipN:     ci.gossipN,
+	}
+}
+
+// InitiateGossip propagates the cluster state to random nodes.
 func (ci *ClusterInfo) InitiateGossip() error {
-	// Get n random nodes
 	nodes := ci.GetRandomNodesForGossip()
-	var err []error
-	// Propagate the cluster state to each of the nodes
+	var errs []error
+
 	for _, node := range nodes {
-		conn, e := grpc.NewClient(node.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
-		if e != nil {
-			err = append(err, e)
+		conn, err := grpc.NewClient(node.Address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			errs = append(errs, err)
 			continue
 		}
+		defer conn.Close()
+
 		client := proto.NewClusterServiceClient(conn)
 		var req proto.ClusterState
 		ci.MapClusterStateToProto(&req)
-		_, e = client.SetClusterState(context.TODO(), &req)
-		if e != nil {
-			err = append(err, e)
+		_, err = client.SetClusterState(context.TODO(), &req)
+		if err != nil {
+			errs = append(errs, err)
 		}
-		conn.Close()
+		fmt.Printf("**********\nSending state with version %v to Node %v\n****************\n", ci.Version, node.Address)
 	}
-	return errors.Join(err...)
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+	return nil
 }
 
+// MapClusterStateToProto maps the current cluster state to a proto message.
 func (ci *ClusterInfo) MapClusterStateToProto(state *proto.ClusterState) {
+	ci.mu.RLock()
+	defer ci.mu.RUnlock()
+
 	state.Version = int64(ci.Version)
 	state.LastUpdated = timestamppb.New(ci.LastUpdated)
 	state.Nodes = make([]*proto.Node, 0, len(ci.Nodes))
@@ -230,4 +277,43 @@ func (ci *ClusterInfo) MapClusterStateToProto(state *proto.ClusterState) {
 			},
 		})
 	}
+}
+
+// ClusterInfo implements the ClusterObserver interface.
+func (ci *ClusterInfo) NodeAdded(node Node) {
+	// Trigger gossip when a new node is added
+	ci.startGossip()
+}
+
+func (ci *ClusterInfo) NodeUpdated(node Node) {
+	// Trigger gossip when a node is updated
+	ci.startGossip()
+}
+
+func (ci *ClusterInfo) NodeRemoved(nodeID string) {
+	// Trigger gossip when a node is removed
+	ci.startGossip()
+}
+
+// startGossip handles initiating gossip in a separate goroutine.
+func (ci *ClusterInfo) startGossip() {
+	// Create a consistent snapshot of the cluster state for gossip
+	snapshot := ci.createClusterSnapshot()
+	go func() {
+		if err := snapshot.InitiateGossip(); err != nil {
+			fmt.Printf("Error during gossip: %v\n", err)
+		}
+	}()
+}
+
+func (ci *ClusterInfo) StartPeriodicGossip() {
+	go func() {
+		ticker := time.NewTicker(ci.gossipInterval)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			fmt.Println("Initiating periodic gossip...")
+			ci.startGossip()
+		}
+	}()
 }

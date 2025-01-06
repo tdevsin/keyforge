@@ -64,6 +64,10 @@ func ReadConfig(env Environment, nodeAddress string) *Config {
 	// Allows HashRing to know when a node is added, updated or removed via the Observer interface
 	clusterInfo.RegisterObserver(hashring)
 	clusterInfo.AddOrUpdateNode(thisNode)
+	// Register itself as an observer to listen to cluster changes and perform gossip
+	clusterInfo.RegisterObserver(clusterInfo)
+	// Start periodic gossip with other nodes to keep state in sync
+	clusterInfo.StartPeriodicGossip()
 
 	l := logger.GetLogger(env == Prod, id)
 	config = Config{
