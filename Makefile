@@ -57,3 +57,7 @@ itest:
 .PHONY: clean
 clean:
 	rm -rf bin
+
+.PHONY: docker
+docker:
+	docker build -t keyforge .

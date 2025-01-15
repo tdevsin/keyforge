@@ -26,16 +26,14 @@ func (hr *HashRing) NodeAdded(node Node) {
 	hr.AddNode(node)
 }
 
-// Observer interface implementation. This allows HashRing to know when a node is updated
-func (hr *HashRing) NodeUpdated(node Node) {
-	hr.RemoveNode(node.ID)
-	hr.AddNode(node)
-}
-
 // Observer interface implementation. This allows HashRing to know when a node is removed
 func (hr *HashRing) NodeRemoved(nodeID string) {
 	hr.RemoveNode(nodeID)
 }
+
+func (hr *HashRing) NodeHealthSuspectedFailed(nodeID string) {}
+
+func (hr *HashRing) NodeHealthPermanentFailed(nodeID string) {}
 
 // AddNode adds a node to the hash ring
 func (hr *HashRing) AddNode(node Node) {
