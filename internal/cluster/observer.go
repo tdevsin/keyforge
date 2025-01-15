@@ -4,6 +4,7 @@ package cluster
 // Any struct can implement this interface and register in cluster state to get notified on state changes
 type ClusterObserver interface {
 	NodeAdded(node Node)
-	NodeUpdated(node Node)
 	NodeRemoved(nodeID string)
+	NodeHealthSuspectedFailed(nodeId string)
+	NodeHealthPermanentFailed(nodeId string)
 }

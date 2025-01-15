@@ -68,7 +68,7 @@ func ReadConfig(env Environment, nodeAddress string) *Config {
 	clusterInfo.RegisterObserver(clusterInfo)
 	// Start periodic gossip with other nodes to keep state in sync
 	clusterInfo.StartPeriodicGossip()
-
+	clusterInfo.StartPeriodicHealthCheck()
 	l := logger.GetLogger(env == Prod, id)
 	config = Config{
 		RootDir:     rootDir,
