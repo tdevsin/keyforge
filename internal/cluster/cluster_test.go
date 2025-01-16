@@ -121,18 +121,28 @@ func TestGetHealthyNodes(t *testing.T) {
 				LastChecked: time.Now(),
 			},
 		}
+		node4 := Node{
+			ID: "node4",
+			Health: Health{
+				Status:      PermanentFailed,
+				LastChecked: time.Now(),
+			},
+		}
 		cluster.AddOrUpdateNode(node1)
 		cluster.AddOrUpdateNode(node2)
 		cluster.AddOrUpdateNode(node3)
-		assert.Equal(t, 3, len(cluster.Nodes))
+		cluster.AddOrUpdateNode(node4)
+		assert.Equal(t, 4, len(cluster.Nodes))
 
 		healthyNodes := cluster.GetHealthyNodes()
-		assert.Equal(t, 2, len(healthyNodes))
+		assert.Equal(t, 3, len(healthyNodes))
 
 		// Create a map of expected healthy nodes for easy comparison
 		expected := map[string]bool{
 			"node1": true,
 			"node2": true,
+			"node3": true,
+			"node4": false,
 		}
 
 		// Check that each healthy node is in the expected map
