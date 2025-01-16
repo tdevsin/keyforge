@@ -7,17 +7,22 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/tdevsin/keyforge/internal/logger"
 )
+
+func getTestLogger() *logger.Logger {
+	return logger.GetLogger(false, "123")
+}
 
 func TestIncrementVersion(t *testing.T) {
 	t.Run("Test increment version", func(t *testing.T) {
-		cluster := NewCluster("node1", 2)
+		cluster := NewCluster(getTestLogger(), "node1", 2)
 		cluster.IncrementVersion()
 		assert.Equal(t, 0, cluster.Version)
 	})
 
 	t.Run("Test increment version multiple times", func(t *testing.T) {
-		cluster := NewCluster("node1", 2)
+		cluster := NewCluster(getTestLogger(), "node1", 2)
 		cluster.IncrementVersion()
 		cluster.IncrementVersion()
 		cluster.IncrementVersion()
@@ -27,7 +32,7 @@ func TestIncrementVersion(t *testing.T) {
 
 func TestAddOrUpdateNode(t *testing.T) {
 	t.Run("Test add node", func(t *testing.T) {
-		cluster := NewCluster("node1", 2)
+		cluster := NewCluster(getTestLogger(), "node1", 2)
 		node := Node{
 			ID: "node1",
 		}
@@ -36,7 +41,7 @@ func TestAddOrUpdateNode(t *testing.T) {
 	})
 
 	t.Run("Test update node", func(t *testing.T) {
-		cluster := NewCluster("node1", 2)
+		cluster := NewCluster(getTestLogger(), "node1", 2)
 		node := Node{
 			ID: "node1",
 		}
@@ -56,7 +61,7 @@ func TestAddOrUpdateNode(t *testing.T) {
 
 func TestRemoveNode(t *testing.T) {
 	t.Run("Test remove node", func(t *testing.T) {
-		cluster := NewCluster("node1", 2)
+		cluster := NewCluster(getTestLogger(), "node1", 2)
 		node := Node{
 			ID: "node1",
 		}
@@ -72,7 +77,7 @@ func TestRemoveNode(t *testing.T) {
 
 func TestGetNode(t *testing.T) {
 	t.Run("Test get node", func(t *testing.T) {
-		cluster := NewCluster("node1", 2)
+		cluster := NewCluster(getTestLogger(), "node1", 2)
 		node := Node{
 			ID: "node1",
 		}
@@ -85,7 +90,7 @@ func TestGetNode(t *testing.T) {
 	})
 
 	t.Run("Test get node not found", func(t *testing.T) {
-		cluster := NewCluster("node1", 2)
+		cluster := NewCluster(getTestLogger(), "node1", 2)
 		node := Node{
 			ID: "node1",
 		}
@@ -99,7 +104,7 @@ func TestGetNode(t *testing.T) {
 
 func TestGetHealthyNodes(t *testing.T) {
 	t.Run("Test get healthy nodes", func(t *testing.T) {
-		cluster := NewCluster("node1", 2)
+		cluster := NewCluster(getTestLogger(), "node1", 2)
 		node1 := Node{
 			ID: "node1",
 			Health: Health{
@@ -155,7 +160,7 @@ func TestGetHealthyNodes(t *testing.T) {
 
 func TestConcurrency(t *testing.T) {
 	t.Run("Test concurrency safety of ClusterManager methods", func(t *testing.T) {
-		cluster := NewCluster("node1", 2)
+		cluster := NewCluster(getTestLogger(), "node1", 2)
 
 		node1 := Node{
 			ID: "node1",
@@ -245,7 +250,7 @@ func TestConcurrency(t *testing.T) {
 }
 
 func TestMergeClusterState(t *testing.T) {
-	cluster := NewCluster("node1", 2)
+	cluster := NewCluster(getTestLogger(), "node1", 2)
 
 	t.Run("Merge Newer State", func(t *testing.T) {
 		// Initial cluster state
@@ -386,7 +391,7 @@ func TestGetRandomNodesForGossip(t *testing.T) {
 	}
 
 	// Initialize a new cluster with self ID and gossipN
-	cluster := NewCluster("node1", 3)
+	cluster := NewCluster(getTestLogger(), "node1", 3)
 
 	// Add initial nodes
 	for i := 1; i <= 5; i++ {
