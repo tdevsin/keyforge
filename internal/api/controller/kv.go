@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"context"
+
 	"github.com/cockroachdb/pebble"
 	"github.com/tdevsin/keyforge/internal/config"
 	"github.com/tdevsin/keyforge/internal/constants"
@@ -9,14 +11,16 @@ import (
 	"go.uber.org/zap"
 )
 
-func SetKey(c *config.Config, r *proto.SetKeyRequest) (*proto.SetKeyResponse, error) {
+func SetKey(ctx context.Context, c *config.Config, r *proto.SetKeyRequest) (*proto.SetKeyResponse, error) {
 	if utils.IsEmpty(r.GetKey()) {
 		return nil, constants.StatusErrInvalidKey
 	}
 	if r.GetValue() == nil || len(r.GetKey()) == 0 {
 		return nil, constants.StatusErrInvalidValue
 	}
-	if c.NodeInfo.ID == c.HashRing.GetResponsibleNode(r.GetKey()) {
+	responsibleNode := c.HashRing.GetResponsibleNode(r.GetKey())
+
+	if c.NodeInfo.ID == responsibleNode {
 		err := c.Db.WriteKey([]byte(r.GetKey()), r.GetValue())
 		if err != nil {
 			c.Logger.Error("Some error occurred while writing key", zap.Error(err))
@@ -27,16 +31,17 @@ func SetKey(c *config.Config, r *proto.SetKeyRequest) (*proto.SetKeyResponse, er
 			Key:   r.GetKey(),
 			Value: r.GetValue(),
 		}, nil
+	} else {
+		return proxySetRequest(ctx, c, c.HashRing.GetNode(responsibleNode).Address, r)
 	}
-	return &proto.SetKeyResponse{}, nil
 }
 
-func GetKey(c *config.Config, r *proto.GetKeyRequest) (*proto.GetKeyResponse, error) {
+func GetKey(ctx context.Context, c *config.Config, r *proto.GetKeyRequest) (*proto.GetKeyResponse, error) {
 	if utils.IsEmpty(r.GetKey()) {
 		return nil, constants.StatusErrInvalidKey
 	}
-
-	if c.NodeInfo.ID == c.HashRing.GetResponsibleNode(r.GetKey()) {
+	responsibleNode := c.HashRing.GetResponsibleNode(r.GetKey())
+	if c.NodeInfo.ID == responsibleNode {
 		// Get key from db
 		v, err := c.Db.ReadKey([]byte(r.GetKey()))
 		if err != nil {
@@ -50,15 +55,17 @@ func GetKey(c *config.Config, r *proto.GetKeyRequest) (*proto.GetKeyResponse, er
 			Key:   r.GetKey(),
 			Value: v,
 		}, nil
+	} else {
+		return proxyGetRequest(ctx, c, c.HashRing.GetNode(responsibleNode).Address, r)
 	}
-	return &proto.GetKeyResponse{}, nil
 }
 
-func DeleteKey(c *config.Config, r *proto.DeleteKeyRequest) (*proto.DeleteKeyResponse, error) {
+func DeleteKey(ctx context.Context, c *config.Config, r *proto.DeleteKeyRequest) (*proto.DeleteKeyResponse, error) {
 	if utils.IsEmpty(r.GetKey()) {
 		return nil, constants.StatusErrInvalidKey
 	}
-	if c.NodeInfo.ID == c.HashRing.GetResponsibleNode(r.GetKey()) {
+	responsibleNode := c.HashRing.GetResponsibleNode(r.GetKey())
+	if c.NodeInfo.ID == responsibleNode {
 		err := c.Db.DeleteKey([]byte(r.GetKey()))
 		if err != nil {
 			return nil, constants.StatusErrInternal
@@ -67,6 +74,34 @@ func DeleteKey(c *config.Config, r *proto.DeleteKeyRequest) (*proto.DeleteKeyRes
 			Key: r.GetKey(),
 		}, nil
 
+	} else {
+		return proxyDeleteRequest(ctx, c, c.HashRing.GetNode(responsibleNode).Address, r)
 	}
-	return &proto.DeleteKeyResponse{}, nil
+}
+
+func proxyGetRequest(ctx context.Context, conf *config.Config, addr string, request *proto.GetKeyRequest) (*proto.GetKeyResponse, error) {
+	conn, err := conf.ConnectionPool.GetConnection(addr)
+	if err != nil {
+		return nil, err
+	}
+	client := proto.NewKeyServiceClient(conn)
+	return client.GetKey(ctx, request)
+}
+
+func proxySetRequest(ctx context.Context, conf *config.Config, addr string, request *proto.SetKeyRequest) (*proto.SetKeyResponse, error) {
+	conn, err := conf.ConnectionPool.GetConnection(addr)
+	if err != nil {
+		return nil, err
+	}
+	client := proto.NewKeyServiceClient(conn)
+	return client.SetKey(ctx, request)
+}
+
+func proxyDeleteRequest(ctx context.Context, conf *config.Config, addr string, request *proto.DeleteKeyRequest) (*proto.DeleteKeyResponse, error) {
+	conn, err := conf.ConnectionPool.GetConnection(addr)
+	if err != nil {
+		return nil, err
+	}
+	client := proto.NewKeyServiceClient(conn)
+	return client.DeleteKey(ctx, request)
 }

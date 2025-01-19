@@ -10,6 +10,7 @@ type ConsistentHashRing interface {
 	AddNode(node Node)
 	RemoveNode(nodeID string)
 	GetResponsibleNode(key string) string
+	GetNode(nodeId string) Node
 }
 
 type HashRing struct {
@@ -62,6 +63,15 @@ func (hr *HashRing) RemoveNode(nodeID string) {
 			break
 		}
 	}
+}
+
+func (hr *HashRing) GetNode(nodeId string) Node {
+	for _, v := range hr.Nodes {
+		if v.ID == nodeId {
+			return v
+		}
+	}
+	return Node{}
 }
 
 // GetResponsibleNode returns the node responsible for a given key

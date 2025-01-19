@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -31,7 +32,7 @@ func TestSetKey(t *testing.T) {
 			Value: []byte("value"),
 		}
 
-		resp, err := SetKey(c, req)
+		resp, err := SetKey(context.TODO(), c, req)
 
 		assert.Nil(t, resp)
 		assert.Equal(t, constants.StatusErrInvalidKey, err)
@@ -51,7 +52,7 @@ func TestSetKey(t *testing.T) {
 			Value: nil,
 		}
 
-		resp, err := SetKey(c, req)
+		resp, err := SetKey(context.TODO(), c, req)
 
 		assert.Nil(t, resp)
 		assert.Equal(t, constants.StatusErrInvalidValue, err)
@@ -81,7 +82,7 @@ func TestSetKey(t *testing.T) {
 			Value: []byte("value"),
 		}
 
-		resp, err := SetKey(c, req)
+		resp, err := SetKey(context.TODO(), c, req)
 
 		assert.Nil(t, resp)
 		assert.Equal(t, constants.StatusErrInternal, err)
@@ -113,7 +114,7 @@ func TestSetKey(t *testing.T) {
 			Value: []byte("value"),
 		}
 
-		resp, err := SetKey(c, req)
+		resp, err := SetKey(context.TODO(), c, req)
 
 		assert.NotNil(t, resp)
 		assert.Equal(t, &proto.SetKeyResponse{
@@ -140,7 +141,7 @@ func TestGetKey(t *testing.T) {
 			Key: "",
 		}
 
-		resp, err := GetKey(c, req)
+		resp, err := GetKey(context.TODO(), c, req)
 
 		assert.Nil(t, resp)
 		assert.Equal(t, constants.StatusErrInvalidKey, err)
@@ -168,7 +169,7 @@ func TestGetKey(t *testing.T) {
 			Key: "key",
 		}
 
-		resp, err := GetKey(c, req)
+		resp, err := GetKey(context.TODO(), c, req)
 
 		assert.Nil(t, resp)
 		assert.Equal(t, constants.StatusErrKeyNotFound, err)
@@ -197,7 +198,7 @@ func TestGetKey(t *testing.T) {
 			Key: "key",
 		}
 
-		resp, err := GetKey(c, req)
+		resp, err := GetKey(context.TODO(), c, req)
 
 		assert.Nil(t, resp)
 		assert.Equal(t, constants.StatusErrInternal, err)
@@ -227,7 +228,7 @@ func TestGetKey(t *testing.T) {
 			Key: "key",
 		}
 
-		resp, err := GetKey(c, req)
+		resp, err := GetKey(context.TODO(), c, req)
 
 		assert.NotNil(t, resp)
 		assert.Equal(t, &proto.GetKeyResponse{
@@ -254,7 +255,7 @@ func TestDeleteKey(t *testing.T) {
 			Key: "",
 		}
 
-		resp, err := DeleteKey(c, req)
+		resp, err := DeleteKey(context.TODO(), c, req)
 
 		assert.Nil(t, resp)
 		assert.Equal(t, constants.StatusErrInvalidKey, err)
@@ -282,7 +283,7 @@ func TestDeleteKey(t *testing.T) {
 			Key: "key",
 		}
 
-		resp, err := DeleteKey(c, req)
+		resp, err := DeleteKey(context.TODO(), c, req)
 
 		assert.Nil(t, resp)
 		assert.Equal(t, constants.StatusErrInternal, err)
@@ -312,7 +313,7 @@ func TestDeleteKey(t *testing.T) {
 			Key: "key",
 		}
 
-		resp, err := DeleteKey(c, req)
+		resp, err := DeleteKey(context.TODO(), c, req)
 
 		assert.NotNil(t, resp)
 		assert.Equal(t, &proto.DeleteKeyResponse{
