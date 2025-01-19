@@ -18,15 +18,24 @@ const (
 	Prod
 )
 
+type Consistency int
+
+const (
+	Strong Consistency = iota
+	Eventual
+)
+
 type Config struct {
-	Environment Environment                // Environment is the environment in which the server is running
-	RootDir     string                     // RootDir will contain all project related files like config, database etc.
-	Logger      logger.Logging             // Logger is the instance of zap logger. This can be used for logging.
-	Db          storage.Database           // Db is the instance of pebble.
-	HashRing    cluster.ConsistentHashRing // HashRing stores all the nodes of the cluster in a ring
-	ClusterInfo cluster.ClusterManager     // ClusterInfo contains details of all the nodes in the cluster
-	NodeInfo    *cluster.Node              // NodeInfo contains details of this node itself
-	MetadataDb  storage.Database           // MetadataDb stores node related information in database for node recovery
+	Environment    Environment                // Environment is the environment in which the server is running
+	RootDir        string                     // RootDir will contain all project related files like config, database etc.
+	Logger         logger.Logging             // Logger is the instance of zap logger. This can be used for logging.
+	Db             storage.Database           // Db is the instance of pebble.
+	HashRing       cluster.ConsistentHashRing // HashRing stores all the nodes of the cluster in a ring
+	ClusterInfo    cluster.ClusterManager     // ClusterInfo contains details of all the nodes in the cluster
+	NodeInfo       *cluster.Node              // NodeInfo contains details of this node itself
+	MetadataDb     storage.Database           // MetadataDb stores node related information in database for node recovery
+	Consistency    Consistency                // Consistency defines if we need strong consistency or eventual consistency
+	ConnectionPool *cluster.ConnectionPool    // ConnectionPool enables reusing existing connections
 }
 
 var config Config
@@ -89,13 +98,15 @@ func ReadConfig(env Environment, nodeAddress string) *Config {
 	clusterInfo.StartPeriodicHealthCheck()
 
 	config = Config{
-		RootDir:     rootDir,
-		Logger:      l,
-		Db:          storage.GetDatabaseInstance(l, rootDir),
-		HashRing:    hashring,
-		NodeInfo:    &thisNode,
-		Environment: env,
-		ClusterInfo: clusterInfo,
+		RootDir:        rootDir,
+		Logger:         l,
+		Db:             storage.GetDatabaseInstance(l, rootDir),
+		HashRing:       hashring,
+		NodeInfo:       &thisNode,
+		Environment:    env,
+		ClusterInfo:    clusterInfo,
+		Consistency:    Strong,
+		ConnectionPool: cluster.NewConnectionPool(),
 	}
 	return &config
 }
@@ -104,4 +115,5 @@ func ReadConfig(env Environment, nodeAddress string) *Config {
 func (c *Config) Cleanup() {
 	c.Logger.Sync()
 	c.Db.Close()
+	c.ConnectionPool.Close()
 }
