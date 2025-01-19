@@ -26,6 +26,7 @@ type Config struct {
 	HashRing    cluster.ConsistentHashRing // HashRing stores all the nodes of the cluster in a ring
 	ClusterInfo cluster.ClusterManager     // ClusterInfo contains details of all the nodes in the cluster
 	NodeInfo    *cluster.Node              // NodeInfo contains details of this node itself
+	MetadataDb  storage.Database           // MetadataDb stores node related information in database for node recovery
 }
 
 var config Config
@@ -41,13 +42,30 @@ func folderExists(path string) bool {
 func ReadConfig(env Environment, nodeAddress string) *Config {
 	homeDir, _ := os.UserHomeDir()
 	rootDir := path.Join(homeDir, ".keyforge")
+	metadataDir := path.Join(rootDir, "metadata")
 
 	if !folderExists(rootDir) {
 		os.Mkdir(rootDir, 0755)
 	}
 
+	if !folderExists(metadataDir) {
+		os.Mkdir(metadataDir, 0755)
+	}
+
 	// TODO: Get real cluster information here
 	id := uuid.NewString()
+
+	metadataDb := storage.GetDatabaseInstance(logger.GetLogger(env == Prod, ""), metadataDir)
+	// Check if there is any existing data about node
+	v, e := metadataDb.ReadKey([]byte("node_id"))
+	if e == nil {
+		// Recovered Node
+		id = string(v)
+	} else {
+		// Save current ID
+		metadataDb.WriteKey([]byte("node_id"), []byte(id))
+	}
+	l := logger.GetLogger(env == Prod, id)
 	position := cluster.CalculateNodePosition(id)
 	thisNode := cluster.Node{
 		ID:       id,
@@ -59,7 +77,7 @@ func ReadConfig(env Environment, nodeAddress string) *Config {
 		},
 	}
 
-	clusterInfo := cluster.NewCluster(id, 2)
+	clusterInfo := cluster.NewCluster(l, id, 2)
 	hashring := cluster.NewHashRing()
 	// Allows HashRing to know when a node is added, updated or removed via the Observer interface
 	clusterInfo.RegisterObserver(hashring)
@@ -69,7 +87,7 @@ func ReadConfig(env Environment, nodeAddress string) *Config {
 	// Start periodic gossip with other nodes to keep state in sync
 	clusterInfo.StartPeriodicGossip()
 	clusterInfo.StartPeriodicHealthCheck()
-	l := logger.GetLogger(env == Prod, id)
+
 	config = Config{
 		RootDir:     rootDir,
 		Logger:      l,

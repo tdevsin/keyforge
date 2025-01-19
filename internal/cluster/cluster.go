@@ -4,11 +4,12 @@ package cluster
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
+	"github.com/tdevsin/keyforge/internal/logger"
 	"github.com/tdevsin/keyforge/internal/proto"
+	"go.uber.org/zap"
 	"golang.org/x/exp/rand"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -35,6 +36,7 @@ type ClusterInfo struct {
 	Nodes               map[string]Node   // Nodes is a map of nodeId to Node
 	Version             int               // Version helps in identifying the latest cluster state
 	LastUpdated         time.Time         // LastUpdated indicates the last time the cluster info was updated
+	logger              logger.Logging    // Instance of logger for logging
 	observers           []ClusterObserver // List of observers to notify on state changes
 	selfId              string            // selfId is the ID of the current node
 	gossipN             int               // Number of nodes to select for gossip
@@ -44,7 +46,7 @@ type ClusterInfo struct {
 }
 
 // NewCluster creates and initializes a new ClusterInfo.
-func NewCluster(selfId string, gossipN int) *ClusterInfo {
+func NewCluster(l logger.Logging, selfId string, gossipN int) *ClusterInfo {
 	cluster := &ClusterInfo{
 		Nodes:               make(map[string]Node),
 		Version:             -1, // Indicates the node is starting for the first time
@@ -54,6 +56,7 @@ func NewCluster(selfId string, gossipN int) *ClusterInfo {
 		gossipInterval:      time.Second * 10,
 		healthCheckInterval: time.Second * 5,
 		failureThreshold:    5,
+		logger:              l,
 	}
 
 	return cluster
@@ -333,7 +336,7 @@ func (ci *ClusterInfo) startGossip() {
 	snapshot := ci.createClusterSnapshot()
 	go func() {
 		if err := snapshot.InitiateGossip(); err != nil {
-			fmt.Printf("Error during gossip: %v\n", err)
+			ci.logger.Error("Error during gossip", zap.Error(err))
 		}
 	}()
 }
@@ -344,7 +347,7 @@ func (ci *ClusterInfo) StartPeriodicGossip() {
 		defer ticker.Stop()
 
 		for range ticker.C {
-			fmt.Println("Initiating periodic gossip...")
+			ci.logger.Info("Periodic gossip started.")
 			ci.startGossip()
 		}
 	}()
@@ -356,7 +359,7 @@ func (ci *ClusterInfo) StartPeriodicHealthCheck() {
 		defer ticker.Stop()
 
 		for range ticker.C {
-			fmt.Println("Initiating health checks...")
+			ci.logger.Info("Periodic health check started")
 			ci.InitiateHealthCheck()
 		}
 	}()
@@ -400,7 +403,7 @@ func (ci *ClusterInfo) handleHealthFailure(nodeID string) {
 		// First failure: Mark as suspected failed
 		node.Health.Status = SuspectedFailed
 		node.Health.LastChecked = time.Now()
-		fmt.Printf("Node %s marked as SuspectedFailed\n", nodeID)
+		ci.logger.Warn("Node marked as SuspectedFailed", zap.String("target_node_id", nodeID))
 		suspectedFailedNode = &node
 
 	case SuspectedFailed:
@@ -409,7 +412,7 @@ func (ci *ClusterInfo) handleHealthFailure(nodeID string) {
 			node.Health.Status = PermanentFailed
 			node.Health.LastChecked = time.Now()
 			permanentFailedNode = &node
-			fmt.Printf("Node %s marked as PermanentFailed\n", nodeID)
+			ci.logger.Warn("Node marked as PermanentFailed", zap.String("target_node_id", nodeID))
 		} else {
 			node.Health.FailureCount++
 			node.Health.LastChecked = time.Now()

@@ -19,7 +19,7 @@ type Logger struct {
 	Logger *zap.Logger
 }
 
-// getLogger returns the global logger instance. If the logger has not been initialized yet, it will create a new logger instance.
+// getLogger returns logger instance.
 func GetLogger(isProd bool, nodeId string) *Logger {
 	var logger Logger
 	var err error

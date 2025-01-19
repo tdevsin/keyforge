@@ -3,6 +3,7 @@ package controller
 import (
 	"github.com/tdevsin/keyforge/internal/cluster"
 	"github.com/tdevsin/keyforge/internal/config"
+	"github.com/tdevsin/keyforge/internal/logger"
 	"github.com/tdevsin/keyforge/internal/proto"
 	"go.uber.org/zap"
 )
@@ -20,7 +21,7 @@ func SetClusterInfo(c *config.Config, state *proto.ClusterState) error {
 }
 
 func MapProtoToClusterInfo(state *proto.ClusterState) *cluster.ClusterInfo {
-	ci := cluster.NewCluster("", 2)
+	ci := cluster.NewCluster(&logger.Logger{}, "", 2)
 	ci.Version = int(state.Version)
 	ci.LastUpdated = state.LastUpdated.AsTime()
 	ci.Nodes = make(map[string]cluster.Node)
